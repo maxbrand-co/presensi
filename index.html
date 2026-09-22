@@ -6,7 +6,6 @@
   <title>Aplikasi Presensi & Dashboard Karyawan - CV. Maxbrand</title>
   
   <!-- Face-API.js -->
-  <!-- Gunakan CDN jsDelivr npm tanpa atribut defer -->
   <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
   <style>
@@ -52,7 +51,7 @@
       position: absolute; bottom: 10px; right: 10px; z-index: 10;
       background: rgba(0, 0, 0, 0.6); color: white; border: 1px solid rgba(255, 255, 255, 0.4);
       border-radius: 50%; width: 38px; height: 38px; font-size: 16px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; width: auto;
+      display: flex; align-items: center; justify-content: center;
     }
 
     /* Buttons */
@@ -108,9 +107,9 @@
 
   <!-- Navigation Tabs -->
   <div class="nav-tabs">
-    <button class="tab-btn active" onclick="switchTab('tabAbsen')">📷 Absen</button>
-    <button class="tab-btn" onclick="switchTab('tabDashboard')">📊 Riwayat</button>
-    <button class="tab-btn" onclick="switchTab('tabRegister')">👤 Daftar Wajah</button>
+    <button class="tab-btn active" onclick="switchTab('tabAbsen', this)">📷 Absen</button>
+    <button class="tab-btn" onclick="switchTab('tabDashboard', this)">📊 Riwayat</button>
+    <button class="tab-btn" onclick="switchTab('tabRegister', this)">👤 Daftar Wajah</button>
   </div>
 
   <!-- TAB 1: ABSEN / LOGIN WAJAH -->
@@ -247,24 +246,35 @@
   <script>
     // MASUKKAN URL DEPLOYMENT APPS SCRIPT ANDA
     const API_URL = "https://script.google.com/macros/s/AKfycbyfE0gY604R0J5hV7rKexlAVYHuL2on_FOFop0lgGCb7bUYMWZ1CMdm_K5VQSB-8I4RBQ/exec"; 
-    const MODEL_URL = "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights";
 
     let datasetKaryawan = [];
     let isModelsLoaded = false;
     let currentUserSession = null;
+
+    // --- SWITCH TAB HELPER ---
+    function switchTab(tabId, element) {
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+
+      const targetTab = document.getElementById(tabId);
+      if (targetTab) targetTab.classList.add("active");
+
+      if (element) {
+        element.classList.add("active");
+      }
+    }
 
     // --- 1. INISIALISASI HALAMAN & FACE-API ---
     document.addEventListener("DOMContentLoaded", async () => {
       initKamera("videoAbsen");
       initKamera("videoReg");
       
-      // Tunggu hingga library faceapi benar-benar siap di memori browser
+      checkExistingSession();
       await waitForFaceApi();
       await loadFaceModels();
       await loadDataKaryawan();
     });
     
-    // Fungsi memastikan window.faceapi sudah dimuat penuh
     function waitForFaceApi() {
       return new Promise((resolve) => {
         if (typeof faceapi !== "undefined") {
@@ -281,27 +291,25 @@
     }
     
     async function loadFaceModels() {
-    const statusDiv = document.getElementById("statusAbsen");
-    try {
-      statusDiv.innerHTML = "⏳ Memuat AI Model Pengenal Wajah...";
-      
-      // Gunakan URL Weights CDN yang paling kompatibel
-      const MODEL_URL = "https://justadudewhohacks.github.io/face-api.js/models";
-  
-      await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-      
-      isModelsLoaded = true;
-      statusDiv.className = "badge-status success";
-      statusDiv.innerHTML = "✅ AI Model Siap. Posisikan wajah di kamera.";
-      console.log("Model face-api berhasil dimuat!");
-    } catch (err) {
-      console.error("Gagal muat model face-api:", err);
-      statusDiv.className = "badge-status danger";
-      statusDiv.innerHTML = "⚠️ Gagal memuat AI Model Wajah. Periksa koneksi internet.";
+      const statusDiv = document.getElementById("statusAbsen");
+      try {
+        statusDiv.innerHTML = "⏳ Memuat AI Model Pengenal Wajah...";
+        const MODEL_URL = "https://justadudewhohacks.github.io/face-api.js/models";
+
+        await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        
+        isModelsLoaded = true;
+        statusDiv.className = "badge-status success";
+        statusDiv.innerHTML = "✅ AI Model Siap. Posisikan wajah di kamera.";
+        console.log("Model face-api berhasil dimuat!");
+      } catch (err) {
+        console.error("Gagal muat model face-api:", err);
+        statusDiv.className = "badge-status danger";
+        statusDiv.innerHTML = "⚠️ Gagal memuat AI Model Wajah. Periksa koneksi internet.";
+      }
     }
-  }
 
     async function loadDataKaryawan() {
       try {
@@ -434,12 +442,10 @@
         const resData = await res.json();
 
         if (resData.status === "success") {
-          // Update Stats
           document.getElementById("statHadir").innerText = resData.summary.totalHadir;
           document.getElementById("statMasuk").innerText = resData.summary.totalMasuk;
           document.getElementById("statPulang").innerText = resData.summary.totalPulang;
 
-          // Render Table
           if (resData.data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Tidak ada riwayat presensi.</td></tr>';
             return;
@@ -475,7 +481,6 @@
 
       let html = "";
       
-      // Detail Masuk
       if (item.masuk) {
         html += `
           <div style="margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid #eee;">
@@ -488,7 +493,6 @@
         html += `<p style="color:var(--text-sub); margin-bottom:8px;">📥 Absen Masuk: Tidak Ada Data</p>`;
       }
 
-      // Detail Pulang
       if (item.pulang) {
         html += `
           <div>
@@ -525,10 +529,7 @@
       statusDiv.innerHTML = "📸 Mengekstrak pola wajah...";
       
       try {
-        // 1. Set opsi deteksi dengan threshold input yang lebih efisien (inputSize 320/416)
         const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5, maxResults: 1 });
-    
-        // 2. Tambahkan Timeout 10 Detik agar tidak menggantung selamanya
         const detectionPromise = faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor();
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error("Waktu proses habis (Timeout). Coba lagi.")), 10000)
@@ -543,13 +544,11 @@
           return;
         }
 
-        // 3. Konversi vektor wajah (128 float) ke String JSON
         const descriptorArray = Array.from(detection.descriptor);
         const descriptorJSON = JSON.stringify(descriptorArray);
     
         statusDiv.innerHTML = "⏳ Menyimpan data ke database...";
     
-        // 4. Kirim ke Apps Script
         const payload = new URLSearchParams();
         payload.append("action", "registerFace");
         payload.append("nama", nama);
@@ -567,7 +566,7 @@
         if (result.status === "success") {
           statusDiv.className = "badge-status success";
           statusDiv.innerHTML = "✅ " + result.message;
-          await loadDataKaryawan(); // Refresh dataset
+          await loadDataKaryawan();
         } else {
           statusDiv.className = "badge-status danger";
           statusDiv.innerHTML = "❌ " + result.message;
