@@ -244,7 +244,6 @@
   </div>
 
   <script>
-    // MASUKKAN URL DEPLOYMENT APPS SCRIPT ANDA
     const API_URL = "https://script.google.com/macros/s/AKfycbyfE0gY604R0J5hV7rKexlAVYHuL2on_FOFop0lgGCb7bUYMWZ1CMdm_K5VQSB-8I4RBQ/exec"; 
 
     let datasetKaryawan = [];
@@ -303,7 +302,6 @@
         isModelsLoaded = true;
         statusDiv.className = "badge-status success";
         statusDiv.innerHTML = "✅ AI Model Siap. Posisikan wajah di kamera.";
-        console.log("Model face-api berhasil dimuat!");
       } catch (err) {
         console.error("Gagal muat model face-api:", err);
         statusDiv.className = "badge-status danger";
@@ -315,8 +313,20 @@
       try {
         const res = await fetch(API_URL + "?action=getKaryawan");
         datasetKaryawan = await res.json();
+        
+        // Memastikan faceDescriptor di-parse dari string JSON jika perlu
+        datasetKaryawan.forEach(user => {
+          if (user.faceDescriptor && typeof user.faceDescriptor === "string") {
+            try {
+              user.faceDescriptor = JSON.parse(user.faceDescriptor);
+            } catch(e) {
+              user.faceDescriptor = null;
+            }
+          }
+        });
+
         populateDropdowns(datasetKaryawan);
-      } catch (e) { console.error(e); }
+      } catch (e) { console.error("Gagal memuat karyawan:", e); }
     }
 
     function populateDropdowns(data) {
@@ -341,40 +351,55 @@
       if (navigator.mediaDevices?.getUserMedia) {
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
           .then(stream => { document.getElementById(videoId).srcObject = stream; })
-          .catch(err => console.error("Akses Kamera Ditolak"));
+          .catch(err => console.error("Akses Kamera Ditolak / Tidak Tersedia:", err));
       }
     }
     function toggleMirror(id) { document.getElementById(id).classList.toggle("mirror"); }
 
     // --- SCAN WAJAH LOGIC ---
     async function scanWajahLogin() {
-      if (!isModelsLoaded) return alert("AI belum siap.");
+      if (!isModelsLoaded) return alert("AI Model belum siap.");
       const video = document.getElementById("videoAbsen");
       const statusDiv = document.getElementById("statusAbsen");
-      statusDiv.className = "badge-status info"; statusDiv.innerHTML = "🔍 Memindai...";
 
-      const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
-      if (!detection) {
-        statusDiv.className = "badge-status danger"; statusDiv.innerHTML = "❌ Wajah tidak jelas. Gunakan PIN.";
-        document.getElementById("groupPinFallback").style.display = "block";
-        return;
+      if (!video.srcObject || video.paused || video.ended) {
+        return alert("Kamera belum aktif!");
       }
 
-      let bestMatch = { nama: null, distance: 1.0 };
-      datasetKaryawan.forEach(user => {
-        if (user.faceDescriptor) {
-          const dist = faceapi.euclideanDistance(detection.descriptor, new Float32Array(user.faceDescriptor));
-          if (dist < bestMatch.distance) bestMatch = { nama: user.nama, distance: dist };
-        }
-      });
+      statusDiv.className = "badge-status info"; 
+      statusDiv.innerHTML = "🔍 Memindai...";
 
-      if (bestMatch.nama && bestMatch.distance < 0.5) {
-        document.getElementById("namaAbsen").value = bestMatch.nama;
-        statusDiv.className = "badge-status success"; statusDiv.innerHTML = `✅ Dikenali: <b>${bestMatch.nama}</b>`;
-        document.getElementById("groupPinFallback").style.display = "none";
-      } else {
-        statusDiv.className = "badge-status danger"; statusDiv.innerHTML = "❌ Wajah tak cocok. Gunakan PIN.";
-        document.getElementById("groupPinFallback").style.display = "block";
+      try {
+        const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+        if (!detection) {
+          statusDiv.className = "badge-status danger"; 
+          statusDiv.innerHTML = "❌ Wajah tidak jelas. Gunakan PIN.";
+          document.getElementById("groupPinFallback").style.display = "block";
+          return;
+        }
+
+        let bestMatch = { nama: null, distance: 1.0 };
+        datasetKaryawan.forEach(user => {
+          if (user.faceDescriptor && Array.isArray(user.faceDescriptor)) {
+            const dist = faceapi.euclideanDistance(detection.descriptor, new Float32Array(user.faceDescriptor));
+            if (dist < bestMatch.distance) bestMatch = { nama: user.nama, distance: dist };
+          }
+        });
+
+        if (bestMatch.nama && bestMatch.distance < 0.5) {
+          document.getElementById("namaAbsen").value = bestMatch.nama;
+          statusDiv.className = "badge-status success"; 
+          statusDiv.innerHTML = `✅ Dikenali: <b>${bestMatch.nama}</b>`;
+          document.getElementById("groupPinFallback").style.display = "none";
+        } else {
+          statusDiv.className = "badge-status danger"; 
+          statusDiv.innerHTML = "❌ Wajah tak cocok. Gunakan PIN.";
+          document.getElementById("groupPinFallback").style.display = "block";
+        }
+      } catch (err) {
+        console.error(err);
+        statusDiv.className = "badge-status danger";
+        statusDiv.innerHTML = "❌ Terjadi kesalahan saat memindai.";
       }
     }
 
@@ -394,7 +419,9 @@
 
       if (!nama || !pin) return alert("Pilih nama dan masukkan PIN!");
 
-      statusDiv.style.display = "block"; statusDiv.className = "badge-status info"; statusDiv.innerHTML = "Memverifikasi...";
+      statusDiv.style.display = "block"; 
+      statusDiv.className = "badge-status info"; 
+      statusDiv.innerHTML = "Memverifikasi...";
 
       const payload = new URLSearchParams({ action: "verifyPin", nama: nama, pin: pin });
       try {
@@ -406,10 +433,12 @@
           currentUserSession = nama;
           showDashboardView(nama);
         } else {
-          statusDiv.className = "badge-status danger"; statusDiv.innerHTML = "❌ " + result.message;
+          statusDiv.className = "badge-status danger"; 
+          statusDiv.innerHTML = "❌ " + result.message;
         }
       } catch (e) {
-        statusDiv.className = "badge-status danger"; statusDiv.innerHTML = "❌ Gagal Verifikasi.";
+        statusDiv.className = "badge-status danger"; 
+        statusDiv.innerHTML = "❌ Gagal Verifikasi.";
       }
     }
 
@@ -442,11 +471,11 @@
         const resData = await res.json();
 
         if (resData.status === "success") {
-          document.getElementById("statHadir").innerText = resData.summary.totalHadir;
-          document.getElementById("statMasuk").innerText = resData.summary.totalMasuk;
-          document.getElementById("statPulang").innerText = resData.summary.totalPulang;
+          document.getElementById("statHadir").innerText = resData.summary.totalHadir || 0;
+          document.getElementById("statMasuk").innerText = resData.summary.totalMasuk || 0;
+          document.getElementById("statPulang").innerText = resData.summary.totalPulang || 0;
 
-          if (resData.data.length === 0) {
+          if (!resData.data || resData.data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Tidak ada riwayat presensi.</td></tr>';
             return;
           }
@@ -455,6 +484,7 @@
           resData.data.forEach(item => {
             const masukTime = item.masuk ? item.masuk.formattedTime : '-';
             const pulangTime = item.pulang ? item.pulang.formattedTime : '-';
+            const jsonStr = JSON.stringify(item).replace(/'/g, "&apos;");
 
             rowsHtml += `
               <tr>
@@ -462,7 +492,7 @@
                 <td><span class="tag ${item.masuk ? 'tag-masuk' : 'tag-empty'}">${masukTime}</span></td>
                 <td><span class="tag ${item.pulang ? 'tag-pulang' : 'tag-empty'}">${pulangTime}</span></td>
                 <td>
-                  <button type="button" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick='openDetailModal(${JSON.stringify(item)})'>Detail</button>
+                  <button type="button" class="btn-primary" style="padding:4px 8px; font-size:0.75rem;" onclick='openDetailModal(${jsonStr})'>Detail</button>
                 </td>
               </tr>
             `;
@@ -584,24 +614,31 @@
     // --- PROSES ABSEN ---
     async function prosesAbsen(statusType) {
       const nama = document.getElementById("namaAbsen").value;
+      const pin = document.getElementById("pinLogin").value;
       const statusDiv = document.getElementById("statusAbsen");
 
       if (!nama) return alert("Pilih / Scan Nama dulu!");
 
       const video = document.getElementById("videoAbsen");
       const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480;
+      canvas.width = video.videoWidth || 640; 
+      canvas.height = video.videoHeight || 480;
       const ctx = canvas.getContext("2d");
       if (video.classList.contains("mirror")) { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const fotoBase64 = canvas.toDataURL("image/jpeg", 0.8);
 
-      statusDiv.className = "badge-status info"; statusDiv.innerHTML = "📍 Ambil GPS & Kirim...";
+      statusDiv.className = "badge-status info"; 
+      statusDiv.innerHTML = "📍 Ambil GPS & Kirim...";
 
       navigator.geolocation.getCurrentPosition(async (pos) => {
         const payload = new URLSearchParams({
-          nama: nama, status: statusType,
-          lat: pos.coords.latitude, long: pos.coords.longitude,
+          action: "prosesAbsen",
+          nama: nama, 
+          status: statusType,
+          pin: pin || "",
+          lat: pos.coords.latitude, 
+          long: pos.coords.longitude,
           foto: fotoBase64
         });
 
@@ -611,10 +648,12 @@
           statusDiv.className = result.status === "success" ? "badge-status success" : "badge-status danger";
           statusDiv.innerHTML = result.message;
         } catch(e) {
-          statusDiv.className = "badge-status danger"; statusDiv.innerHTML = "❌ Gagal kirim absen.";
+          statusDiv.className = "badge-status danger"; 
+          statusDiv.innerHTML = "❌ Gagal kirim absen.";
         }
       }, () => {
-        statusDiv.className = "badge-status danger"; statusDiv.innerHTML = "❌ Izin GPS Ditolak.";
+        statusDiv.className = "badge-status danger"; 
+        statusDiv.innerHTML = "❌ Izin GPS Ditolak.";
       }, { enableHighAccuracy: true, timeout: 10000 });
     }
   </script>
