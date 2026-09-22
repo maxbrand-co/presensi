@@ -236,7 +236,7 @@
   <div id="detailModal" class="modal-overlay">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 id="modalTanggal">Detail Absensi</h3>
+        <h3 id="modalTanggal">Detail Presensi</h3>
         <button class="close-btn" onclick="closeModal()">✕</button>
       </div>
       <div class="modal-body" id="modalContent"></div>
@@ -409,7 +409,7 @@
       document.getElementById("loginSectionDashboard").style.display = "block";
     }
 
-    // --- FETCH RIWAYAT ABSENSI ---
+    // --- FETCH RIWAYAT PRESENSI ---
     async function fetchRiwayatAbsen() {
       if (!currentUserSession) return;
       const start = document.getElementById("startDateFilter").value;
@@ -431,7 +431,7 @@
 
           // Render Table
           if (resData.data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Tidak ada riwayat absensi.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Tidak ada riwayat presensi.</td></tr>';
             return;
           }
 
@@ -458,9 +458,9 @@
       }
     }
 
-    // --- MODAL DETAIL ABSENSI ---
+    // --- MODAL DETAIL PRESENSI ---
     function openDetailModal(item) {
-      document.getElementById("modalTanggal").innerText = "Detail Absensi: " + item.tanggal;
+      document.getElementById("modalTanggal").innerText = "Detail Presensi: " + item.tanggal;
       const content = document.getElementById("modalContent");
 
       let html = "";
