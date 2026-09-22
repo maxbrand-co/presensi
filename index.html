@@ -244,7 +244,7 @@
   </div>
 
   <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzEU26PMivjm6bZdudak03MyGvtcPsEi93VNwDxrKseh9zhAd-XetJNN61dL4OThMM/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbxoLiU14KqG4xUVKIY66mRt8iPZcpFIIVraB9y3fTw6MtQO2xVhmLVM54iSHnEFklhI0A/exec"; 
 
     let datasetKaryawan = [];
     let isModelsLoaded = false;
@@ -315,48 +315,51 @@
       }
     }
 
-    async function loadDataKaryawan() {
-      // 1. TAMPILKAN DARI CACHE SEMENTARA (Seketika / 0 Detik)
-      const cachedList = localStorage.getItem("cached_employee_list");
-      if (cachedList) {
-        try {
-          employeeDataList = JSON.parse(cachedList);
-          populateEmployeeDropdown();
-          console.log("Nama karyawan berhasil dimuat instan dari LocalCache.");
-        } catch (e) {
-          console.error("Cache invalid:", e);
-        }
+    async function loadNamaKaryawan() {
+      const select = document.getElementById("selectKaryawan"); // Sesuaikan ID element dropdown Anda
+    
+      // 1. Tampilkan dulu dari HP/Storage lokal jika pernah dibuka sebelumnya (0 Detik)
+      const localData = localStorage.getItem("LIST_NAMA_KARYAWAN");
+      if (localData) {
+        renderDropdown(JSON.parse(localData));
+      } else {
+        select.innerHTML = '<option value="">Memuat nama...</option>';
       }
     
-      // 2. FETCH NAMA KARYAWAN DARI SERVER (Cepat karena data ringan)
+      // 2. Minta data super cepat dari server
       try {
-        const resNama = await fetch(`${SCRIPT_URL}?action=getNamaKaryawan`);
-        const resultNama = await resNama.json();
-        
-        if (resultNama.status === "success") {
-          employeeDataList = resultNama.data;
-          // Simpan ke Cache
-          localStorage.setItem("cached_employee_list", JSON.stringify(resultNama.data));
-          // Perbarui Dropdown
-          populateEmployeeDropdown();
-        }
-      } catch (err) {
-        console.error("Gagal sync nama karyawan:", err);
-      }
+        const res = await fetch(`${SCRIPT_URL}?action=getNamaKaryawan`);
+        const json = await res.json();
     
-      // 3. FETCH DESKRIPTOR WAJAH DI BACKGROUND (Untuk AI Face Recognition)
-      try {
-        const resFull = await fetch(`${SCRIPT_URL}?action=getKaryawan`);
-        const resultFull = await resFull.json();
-        if (resultFull.status === "success") {
-          // Gabungkan data descriptor dengan list karyawan
-          employeeDataList = resultFull.data;
-          buildFaceMatcher();
+        if (json.status === "success" && json.data.length > 0) {
+          // Simpan ke storage HP
+          localStorage.setItem("LIST_NAMA_KARYAWAN", JSON.stringify(json.data));
+          // Update tampilan dropdown
+          renderDropdown(json.data);
         }
       } catch (err) {
-        console.error("Gagal fetch descriptor wajah:", err);
+        console.error("Gagal memuat nama karyawan:", err);
       }
     }
+    
+    function renderDropdown(list) {
+      const select = document.getElementById("selectKaryawan");
+      if (!select) return;
+      
+      select.innerHTML = '<option value="">-- Pilih Karyawan --</option>';
+      list.forEach(item => {
+        const opt = document.createElement("option");
+        opt.value = item.nama;
+        opt.textContent = `${item.nik ? item.nik + " - " : ""}${item.nama}`;
+        select.appendChild(opt);
+      });
+    }
+
+    // Kirim ping latar belakang begitu halaman terbuka
+    fetch(`${SCRIPT_URL}?action=getNamaKaryawan`);
+    
+    // Panggil saat halaman pertama kali dibuka
+    document.addEventListener("DOMContentLoaded", loadNamaKaryawan);
     
     function populateEmployeeDropdown() {
       const select = document.getElementById("selectKaryawan");
