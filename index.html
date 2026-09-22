@@ -316,39 +316,63 @@
     }
 
     async function loadDataKaryawan() {
+      // 1. TAMPILKAN DARI CACHE SEMENTARA (Seketika / 0 Detik)
+      const cachedList = localStorage.getItem("cached_employee_list");
+      if (cachedList) {
+        try {
+          employeeDataList = JSON.parse(cachedList);
+          populateEmployeeDropdown();
+          console.log("Nama karyawan berhasil dimuat instan dari LocalCache.");
+        } catch (e) {
+          console.error("Cache invalid:", e);
+        }
+      }
+    
+      // 2. FETCH NAMA KARYAWAN DARI SERVER (Cepat karena data ringan)
       try {
-        const res = await fetch(API_URL + "?action=getKaryawan");
-        datasetKaryawan = await res.json();
+        const resNama = await fetch(`${SCRIPT_URL}?action=getNamaKaryawan`);
+        const resultNama = await resNama.json();
         
-        // Memastikan faceDescriptor di-parse dari string JSON jika perlu
-        datasetKaryawan.forEach(user => {
-          if (user.faceDescriptor && typeof user.faceDescriptor === "string") {
-            try {
-              user.faceDescriptor = JSON.parse(user.faceDescriptor);
-            } catch(e) {
-              user.faceDescriptor = null;
-            }
-          }
-        });
-
-        populateDropdowns(datasetKaryawan);
-      } catch (e) { console.error("Gagal memuat karyawan:", e); }
+        if (resultNama.status === "success") {
+          employeeDataList = resultNama.data;
+          // Simpan ke Cache
+          localStorage.setItem("cached_employee_list", JSON.stringify(resultNama.data));
+          // Perbarui Dropdown
+          populateEmployeeDropdown();
+        }
+      } catch (err) {
+        console.error("Gagal sync nama karyawan:", err);
+      }
+    
+      // 3. FETCH DESKRIPTOR WAJAH DI BACKGROUND (Untuk AI Face Recognition)
+      try {
+        const resFull = await fetch(`${SCRIPT_URL}?action=getKaryawan`);
+        const resultFull = await resFull.json();
+        if (resultFull.status === "success") {
+          // Gabungkan data descriptor dengan list karyawan
+          employeeDataList = resultFull.data;
+          buildFaceMatcher();
+        }
+      } catch (err) {
+        console.error("Gagal fetch descriptor wajah:", err);
+      }
     }
-
-    function populateDropdowns(data) {
-      const selAbsen = document.getElementById("namaAbsen");
-      const selReg = document.getElementById("namaReg");
-      const selDash = document.getElementById("userDashboardSelect");
-
-      selAbsen.innerHTML = '<option value="">-- Pilih / Scan Nama --</option>';
-      selReg.innerHTML = '<option value="">-- Pilih Nama --</option>';
-      selDash.innerHTML = '<option value="">-- Pilih Nama Anda --</option>';
-
-      data.forEach(item => {
-        const opt1 = new Option(item.nama + (item.isRegistered ? " (Terdaftar)" : ""), item.nama);
-        const opt2 = new Option(item.nama, item.nama);
-        const opt3 = new Option(item.nama, item.nama);
-        selAbsen.add(opt1); selReg.add(opt2); selDash.add(opt3);
+    
+    function populateEmployeeDropdown() {
+      const select = document.getElementById("selectKaryawan");
+      if (!select) return;
+    
+      if (employeeDataList.length === 0) {
+        select.innerHTML = '<option value="">Memuat daftar nama...</option>';
+        return;
+      }
+      
+      select.innerHTML = '<option value="">-- Pilih Karyawan --</option>';
+      employeeDataList.forEach((emp) => {
+        const option = document.createElement("option");
+        option.value = emp.nik || emp.id;
+        option.textContent = `${emp.nik || emp.id} - ${emp.nama}`;
+        select.appendChild(option);
       });
     }
 
