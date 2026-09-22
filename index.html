@@ -6,7 +6,8 @@
   <title>Aplikasi Presensi & Dashboard Karyawan - CV. Maxbrand</title>
   
   <!-- Face-API.js -->
-  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
+  <!-- Gunakan CDN jsDelivr npm tanpa atribut defer -->
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
 
   <style>
     :root {
@@ -252,52 +253,55 @@
     let isModelsLoaded = false;
     let currentUserSession = null;
 
+    // --- 1. INISIALISASI HALAMAN & FACE-API ---
     document.addEventListener("DOMContentLoaded", async () => {
       initKamera("videoAbsen");
       initKamera("videoReg");
       
-      // Set default filter tanggal (Bulan Ini)
-      const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-      const today = now.toISOString().split('T')[0];
-      document.getElementById("startDateFilter").value = firstDay;
-      document.getElementById("endDateFilter").value = today;
-
-      checkExistingSession();
+      // Tunggu hingga library faceapi benar-benar siap di memori browser
+      await waitForFaceApi();
       await loadFaceModels();
       await loadDataKaryawan();
     });
-
-    // --- TAB SWITCHING ---
-    function switchTab(tabId) {
-      document.querySelectorAll(".tab-btn").forEach((btn, idx) => {
-        btn.classList.toggle("active", (tabId==='tabAbsen' && idx===0) || (tabId==='tabDashboard' && idx===1) || (tabId==='tabRegister' && idx===2));
+    
+    // Fungsi memastikan window.faceapi sudah dimuat penuh
+    function waitForFaceApi() {
+      return new Promise((resolve) => {
+        if (typeof faceapi !== "undefined") {
+          resolve();
+        } else {
+          const interval = setInterval(() => {
+            if (typeof faceapi !== "undefined") {
+              clearInterval(interval);
+              resolve();
+            }
+          }, 100);
+        }
       });
-      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
-      document.getElementById(tabId).classList.add("active");
     }
-
-    // --- LOAD DATA & AI ---
+    
     async function loadFaceModels() {
-      const statusDiv = document.getElementById("statusAbsen");
-      try {
-        statusDiv.innerHTML = "⏳ Memuat AI Model Pengenal Wajah...";
-        
-        // Memuat 3 model penting dari github raw CDN
-        await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-        
-        isModelsLoaded = true;
-        statusDiv.className = "badge-status success";
-        statusDiv.innerHTML = "✅ AI Model Siap. Posisikan wajah di kamera.";
-        console.log("Model face-api berhasil dimuat!");
-      } catch (err) {
-        console.error("Gagal muat model face-api:", err);
-        statusDiv.className = "badge-status danger";
-        statusDiv.innerHTML = "⚠️ Gagal memuat AI Model Wajah. Periksa koneksi internet.";
-      }
+    const statusDiv = document.getElementById("statusAbsen");
+    try {
+      statusDiv.innerHTML = "⏳ Memuat AI Model Pengenal Wajah...";
+      
+      // Gunakan URL Weights CDN yang paling kompatibel
+      const MODEL_URL = "https://justadudewhohacks.github.io/face-api.js/models";
+  
+      await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+      
+      isModelsLoaded = true;
+      statusDiv.className = "badge-status success";
+      statusDiv.innerHTML = "✅ AI Model Siap. Posisikan wajah di kamera.";
+      console.log("Model face-api berhasil dimuat!");
+    } catch (err) {
+      console.error("Gagal muat model face-api:", err);
+      statusDiv.className = "badge-status danger";
+      statusDiv.innerHTML = "⚠️ Gagal memuat AI Model Wajah. Periksa koneksi internet.";
     }
+  }
 
     async function loadDataKaryawan() {
       try {
