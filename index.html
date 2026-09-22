@@ -6,7 +6,7 @@
   <title>Aplikasi Presensi & Dashboard Karyawan - CV. Maxbrand</title>
   
   <!-- Face-API.js -->
-  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/face-api.js/0.22.2/face-api.min.js"></script>
 
   <style>
     :root {
@@ -246,7 +246,7 @@
   <script>
     // MASUKKAN URL DEPLOYMENT APPS SCRIPT ANDA
     const API_URL = "https://script.google.com/macros/s/AKfycbyfE0gY604R0J5hV7rKexlAVYHuL2on_FOFop0lgGCb7bUYMWZ1CMdm_K5VQSB-8I4RBQ/exec"; 
-    const MODEL_URL = "https://cdn.jsdelivr.net/gh/catenoid/face-api.js@master/weights";
+    const MODEL_URL = "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights";
 
     let datasetKaryawan = [];
     let isModelsLoaded = false;
@@ -281,15 +281,21 @@
     async function loadFaceModels() {
       const statusDiv = document.getElementById("statusAbsen");
       try {
+        statusDiv.innerHTML = "⏳ Memuat AI Model Pengenal Wajah...";
+        
+        // Memuat 3 model penting dari github raw CDN
         await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
         await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
         await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        
         isModelsLoaded = true;
         statusDiv.className = "badge-status success";
-        statusDiv.innerHTML = "✅ AI Wajah Siap.";
+        statusDiv.innerHTML = "✅ AI Model Siap. Posisikan wajah di kamera.";
+        console.log("Model face-api berhasil dimuat!");
       } catch (err) {
+        console.error("Gagal muat model face-api:", err);
         statusDiv.className = "badge-status danger";
-        statusDiv.innerHTML = "⚠️ AI Wajah gagal dimuat.";
+        statusDiv.innerHTML = "⚠️ Gagal memuat AI Model Wajah. Periksa koneksi internet.";
       }
     }
 
