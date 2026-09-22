@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Absensi Face Recognition CV. Maxbrand</title>
+  
+  <!-- Library Face-API.js -->
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+
+  <style>
+    body { font-family: Arial, sans-serif; padding: 15px; max-width: 500px; margin: auto; background-color: #f8f9fa; }
+    h2, h3 { text-align: center; color: #333; margin-bottom: 10px; }
+    
+    /* Navigation Tabs */
+    .nav-tabs { display: flex; gap: 5px; margin-bottom: 15px; }
+    .tab-btn { flex: 1; padding: 10px; font-weight: bold; border: 1px solid #ccc; background: #e9ecef; cursor: pointer; border-radius: 6px 6px 0 0; text-align: center; }
+    .tab-btn.active { background: #007bff; color: white; border-color: #007bff; }
+    
+    .tab-content { display: none; background: white; padding: 15px; border-radius: 0 0 6px 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .tab-content.active { display: block; }
+
+    .form-group { margin-bottom: 15px; }
+    label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+    
+    select, input, button { width: 100%; padding: 12px; font-size: 15px; border-radius: 6px; box-sizing: border-box; border: 1px solid #ccc; }
+    
+    /* Layout Kamera */
+    .camera-box { position: relative; width: 100%; text-align: center; line-height: 0; background: #000; border-radius: 8px; overflow: hidden; margin-bottom: 10px; }
+    video, img { width: 100%; max-height: 280px; object-fit: cover; }
+    
+    .mirror { transform: scaleX(-1); -webkit-transform: scaleX(-1); }
+
+    /* Button Mirror Floating */
+    .btn-mirror-overlay {
+      position: absolute; bottom: 10px; right: 10px; z-index: 10;
+      background: rgba(0, 0, 0, 0.6); color: white; border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 50%; width: 40px; height: 40px; font-size: 18px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* Status Indicator Badge */
+    .badge-status { text-align: center; padding: 8px; border-radius: 5px; font-weight: bold; margin-top: 10px; font-size: 14px; }
+    .info { background: #e2e3e5; color: #383d41; }
+    .success { background: #d4edda; color: #155724; }
+    .danger { background: #f8d7da; color: #721c24; }
+
+    /* Tombol-tombol */
+    .btn-primary { background-color: #007bff; color: white; font-weight: bold; border: none; cursor: pointer; }
+    .btn-success { background-color: #28a745; color: white; font-weight: bold; border: none; cursor: pointer; }
+    .btn-danger { background-color: #dc3545; color: white; font-weight: bold; border: none; cursor: pointer; }
+    .btn-secondary { background-color: #6c757d; color: white; border: none; cursor: pointer; }
+
+    .btn-group-2 { display: flex; gap: 10px; margin-top: 10px; }
+    button:disabled { background-color: #cccccc !important; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+  <h2>Absensi CV. Maxbrand</h2>
+
+  <!-- Tab Navigasi -->
+  <div class="nav-tabs">
+    <div class="tab-btn active" onclick="switchTab('tabAbsen')">📷 Absen / Login</div>
+    <div class="tab-btn" onclick="switchTab('tabRegister')">👤 Daftar Wajah</div>
+  </div>
+
+  <!-- ================= TAB 1: ABSEN / LOGIN WAJAH ================= -->
+  <div id="tabAbsen" class="tab-content active">
+    <div class="form-group">
+      <label>Kamera Auto-Recognize:</label>
+      <div class="camera-box">
+        <video id="videoAbsen" class="mirror" autoplay playsinline></video>
+        <img id="previewFotoAbsen" style="display: none;" />
+        <canvas id="canvasAbsen" style="display:none;"></canvas>
+        <button type="button" class="btn-mirror-overlay" onclick="toggleMirror('videoAbsen')">🔄</button>
+      </div>
+      <button type="button" id="btnScanWajah" class="btn-primary" onclick="scanWajahLogin()">🔍 Scan & Kenali Wajah</button>
+    </div>
+
+    <div class="form-group">
+      <label for="namaAbsen">Nama Terdeteksi / Dipilih:</label>
+      <select id="namaAbsen">
+        <option value="">-- Memuat daftar karyawan... --</option>
+      </select>
+    </div>
+
+    <!-- Fallback PIN jika kamera kesulitan mengenali -->
+    <div class="form-group" id="groupPinFallback" style="display: none;">
+      <label for="pinLogin">Gunakan PIN jika Scan Wajah Gagal:</label>
+      <input type="password" id="pinLogin" placeholder="Masukkan 4-6 digit PIN" maxlength="6" />
+    </div>
+
+    <div class="btn-group-2">
+      <button type="button" id="btnMasuk" class="btn-success" onclick="prosesAbsen('Masuk')">📥 MASUK</button>
+      <button type="button" id="btnPulang" class="btn-danger" onclick="prosesAbsen('Pulang')">📤 PULANG</button>
+    </div>
+
+    <div id="statusAbsen" class="badge-status info">Memuat model AI & data karyawan...</div>
+  </div>
+
+  <!-- ================= TAB 2: REGISTRASI WAJAH ================= -->
+  <div id="tabRegister" class="tab-content">
+    <h3>Pendaftaran Wajah Baru</h3>
+    
+    <div class="form-group">
+      <label for="namaReg">Pilih Nama Karyawan:</label>
+      <select id="namaReg">
+        <option value="">-- Pilih Nama --</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="pinReg">Buat PIN Cadangan (4-6 Angka):</label>
+      <input type="password" id="pinReg" placeholder="Contoh: 1234" maxlength="6" />
+    </div>
+
+    <div class="form-group">
+      <label>Ambil Sampel Wajah:</label>
+      <div class="camera-box">
+        <video id="videoReg" class="mirror" autoplay playsinline></video>
+        <button type="button" class="btn-mirror-overlay" onclick="toggleMirror('videoReg')">🔄</button>
+      </div>
+      <button type="button" id="btnRegisterFace" class="btn-primary" onclick="prosesRegistrasiWajah()">📸 Ambil & Simpan Data Wajah</button>
+    </div>
+
+    <div id="statusReg" class="badge-status info">Pilih nama dan ambil foto wajah secara tegak lurus.</div>
+  </div>
+
+  <script>
+    // GANTI DENGAN URL DEPLOYMENT APPS SCRIPT BARU ANDA (TAHAP 1)
+    const API_URL = "https://script.google.com/macros/s/AKfycbwwKTsVVu39HdMNgGgMDDkRyLO-egl3xXZgVjuq9-34gfgF2qNUmx4mcfKvvx67Jfci/exec"; 
+
+    // URL Model Face-API dari GitHub CDN
+    const MODEL_URL = "https://cdn.jsdelivr.net/gh/catenoid/face-api.js@master/weights";
+
+    let datasetKaryawan = [];
+    let isModelsLoaded = false;
+
+    // --- 1. INISIALISASI HALAMAN & FACE-API ---
+    document.addEventListener("DOMContentLoaded", async () => {
+      initKamera("videoAbsen");
+      initKamera("videoReg");
+      
+      await loadFaceModels();
+      await loadDataKaryawan();
+    });
+
+    async function loadFaceModels() {
+      const statusDiv = document.getElementById("statusAbsen");
+      try {
+        statusDiv.innerHTML = "⏳ Memuat AI Model Pengenal Wajah...";
+        await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        isModelsLoaded = true;
+        statusDiv.className = "badge-status success";
+        statusDiv.innerHTML = "✅ AI Model Siap. Posisikan wajah di kamera.";
+      } catch (err) {
+        console.error("Gagal muat model face-api:", err);
+        statusDiv.className = "badge-status danger";
+        statusDiv.innerHTML = "⚠️ Gagal memuat AI Model Wajah. Periksa koneksi internet.";
+      }
+    }
+
+    async function loadDataKaryawan() {
+      try {
+        const res = await fetch(API_URL + "?action=getKaryawan");
+        datasetKaryawan = await res.json();
+        
+        populateDropdowns(datasetKaryawan);
+      } catch (err) {
+        console.error("Gagal load karyawan:", err);
+      }
+    }
+
+    function populateDropdowns(data) {
+      const selAbsen = document.getElementById("namaAbsen");
+      const selReg = document.getElementById("namaReg");
+
+      selAbsen.innerHTML = '<option value="">-- Pilih / Scan Nama --</option>';
+      selReg.innerHTML = '<option value="">-- Pilih Nama --</option>';
+
+      data.forEach(item => {
+        const opt1 = document.createElement("option");
+        opt1.value = item.nama;
+        opt1.textContent = item.nama + (item.isRegistered ? " (Wajah Terdaftar)" : " (Belum Mendaftar)");
+        selAbsen.appendChild(opt1);
+
+        const opt2 = document.createElement("option");
+        opt2.value = item.nama;
+        opt2.textContent = item.nama;
+        selReg.appendChild(opt2);
+      });
+    }
+
+    // --- 2. KAMERA HELPERS ---
+    function initKamera(videoId) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+        .then(stream => { 
+          document.getElementById(videoId).srcObject = stream; 
+        })
+        .catch(err => console.error("Akses kamera ditolak:", err));
+    }
+
+    function toggleMirror(videoId) {
+      document.getElementById(videoId).classList.toggle("mirror");
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+      if (tabId === 'tabAbsen') {
+        document.querySelectorAll(".tab-btn")[0].classList.add("active");
+      } else {
+        document.querySelectorAll(".tab-btn")[1].classList.add("active");
+      }
+      document.getElementById(tabId).classList.add("active");
+    }
+
+    // --- 3. AUTO RECOGNITION (LOGIN WAJAH) ---
+    async function scanWajahLogin() {
+      if (!isModelsLoaded) return alert("Sistem AI Wajah belum selesai dimuat.");
+
+      const video = document.getElementById("videoAbsen");
+      const statusDiv = document.getElementById("statusAbsen");
+
+      statusDiv.className = "badge-status info";
+      statusDiv.innerHTML = "🔍 Memindai wajah Anda...";
+
+      // Ekstrak sampel wajah dari video feed
+      const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+
+      if (!detection) {
+        statusDiv.className = "badge-status danger";
+        statusDiv.innerHTML = "❌ Wajah tidak terdeteksi jelas. Pastikan cahaya cukup.";
+        document.getElementById("groupPinFallback").style.display = "block";
+        return;
+      }
+
+      // Ambil descriptor terdeteksi
+      const inputDescriptor = detection.descriptor;
+
+      // Cari match terbaik di database
+      let bestMatch = { nama: null, distance: 1.0 };
+      const THRESHOLD = 0.5; // Semakin kecil angka (misal 0.45) semakin ketat/akurat
+
+      datasetKaryawan.forEach(user => {
+        if (user.faceDescriptor) {
+          const savedDescriptor = new Float32Array(user.faceDescriptor);
+          const distance = faceapi.euclideanDistance(inputDescriptor, savedDescriptor);
+          
+          if (distance < bestMatch.distance) {
+            bestMatch = { nama: user.nama, distance: distance };
+          }
+        }
+      });
+
+      if (bestMatch.nama && bestMatch.distance < THRESHOLD) {
+        document.getElementById("namaAbsen").value = bestMatch.nama;
+        statusDiv.className = "badge-status success";
+        statusDiv.innerHTML = `✅ Wajah Dikenali: <b>${bestMatch.nama}</b>! Silakan klik Masuk/Pulang.`;
+        document.getElementById("groupPinFallback").style.display = "none";
+      } else {
+        statusDiv.className = "badge-status danger";
+        statusDiv.innerHTML = "❌ Wajah tidak cocok dengan data mana pun. Silakan gunakan PIN.";
+        document.getElementById("groupPinFallback").style.display = "block";
+      }
+    }
+
+    // --- 4. REGISTRASI WAJAH ---
+    async function prosesRegistrasiWajah() {
+      const nama = document.getElementById("namaReg").value;
+      const pin = document.getElementById("pinReg").value;
+      const video = document.getElementById("videoReg");
+      const statusDiv = document.getElementById("statusReg");
+      const btnReg = document.getElementById("btnRegisterFace");
+
+      if (!nama) return alert("Pilih nama karyawan dulu!");
+      if (!pin || pin.length < 4) return alert("Buat PIN minimal 4 angka!");
+
+      btnReg.disabled = true;
+      statusDiv.className = "badge-status info";
+      statusDiv.innerHTML = "📸 Mengekstrak pola wajah...";
+
+      const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+
+      if (!detection) {
+        btnReg.disabled = false;
+        statusDiv.className = "badge-status danger";
+        statusDiv.innerHTML = "❌ Wajah tidak terdeteksi. Posisikan wajah tepat menghadap kamera.";
+        return;
+      }
+
+      // Konversi Float32Array vektor wajah ke Array biasa lalu ke JSON String
+      const descriptorArray = Array.from(detection.descriptor);
+      const descriptorJSON = JSON.stringify(descriptorArray);
+
+      statusDiv.innerHTML = "⏳ Menyimpan data ke database...";
+
+      const payload = new URLSearchParams();
+      payload.append("action", "registerFace");
+      payload.append("nama", nama);
+      payload.append("pin", pin);
+      payload.append("faceDescriptor", descriptorJSON);
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: payload.toString()
+        });
+        const result = await res.json();
+
+        if (result.status === "success") {
+          statusDiv.className = "badge-status success";
+          statusDiv.innerHTML = "✅ " + result.message;
+          await loadDataKaryawan(); // Refresh dataset lokal
+        } else {
+          statusDiv.className = "badge-status danger";
+          statusDiv.innerHTML = "❌ " + result.message;
+        }
+      } catch (err) {
+        statusDiv.className = "badge-status danger";
+        statusDiv.innerHTML = "❌ Gagal terhubung ke server.";
+      } finally {
+        btnReg.disabled = false;
+      }
+    }
+
+    // --- 5. PROSES ABSENSI ---
+    async function prosesAbsen(statusType) {
+      const nama = document.getElementById("namaAbsen").value;
+      const pin = document.getElementById("pinLogin").value;
+      const statusDiv = document.getElementById("statusAbsen");
+
+      if (!nama) return alert("Pilih atau Scan Wajah terlebih dahulu!");
+
+      // Ambil Snapshot Foto Selfie
+      const video = document.getElementById("videoAbsen");
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext("2d");
+      
+      if (video.classList.contains("mirror")) {
+        ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const fotoBase64 = canvas.toDataURL("image/jpeg", 0.8);
+
+      statusDiv.className = "badge-status info";
+      statusDiv.innerHTML = "📍 Mengambil GPS & Memproses Absensi...";
+
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const payload = new URLSearchParams();
+          payload.append("nama", nama);
+          payload.append("status", statusType);
+          payload.append("lat", pos.coords.latitude);
+          payload.append("long", pos.coords.longitude);
+          payload.append("foto", fotoBase64);
+
+          try {
+            const res = await fetch(API_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: payload.toString()
+            });
+            const result = await res.json();
+
+            if (result.status === "success") {
+              statusDiv.className = "badge-status success";
+              statusDiv.innerHTML = `🎉 ${result.message}`;
+            } else {
+              statusDiv.className = "badge-status danger";
+              statusDiv.innerHTML = `❌ ${result.message}`;
+            }
+          } catch (e) {
+            statusDiv.className = "badge-status danger";
+            statusDiv.innerHTML = "❌ Gagal mengirim absensi.";
+          }
+        },
+        (err) => {
+          statusDiv.className = "badge-status danger";
+          statusDiv.innerHTML = "❌ Gagal mengambil lokasi GPS. Izinkan lokasi di browser.";
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+  </script>
+</body>
+</html>
