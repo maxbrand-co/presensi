@@ -265,13 +265,19 @@
 
     // --- 1. INISIALISASI HALAMAN & FACE-API ---
     document.addEventListener("DOMContentLoaded", async () => {
+      // 1. Jalankan fungsi synchronous
       initKamera("videoAbsen");
       initKamera("videoReg");
-      
       checkExistingSession();
+    
+      // 2. Tunggu faceapi siap dimuat
       await waitForFaceApi();
-      await loadFaceModels();
-      await loadDataKaryawan();
+    
+      // 3. Jalankan load model AI dan load data karyawan secara PARALEL
+      await Promise.all([
+        loadFaceModels(),
+        loadDataKaryawan()
+      ]);
     });
     
     function waitForFaceApi() {
