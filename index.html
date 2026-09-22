@@ -505,32 +505,70 @@
       const pin = document.getElementById("pinReg").value;
       const video = document.getElementById("videoReg");
       const statusDiv = document.getElementById("statusReg");
-
-      if (!nama || !pin) return alert("Pilih nama & isi PIN!");
-
-      statusDiv.className = "badge-status info"; statusDiv.innerHTML = "📸 Mengekstrak Wajah...";
-
-      const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
-      if (!detection) {
-        statusDiv.className = "badge-status danger"; statusDiv.innerHTML = "❌ Wajah tak terdeteksi.";
-        return;
-      }
-
-      const payload = new URLSearchParams({
-        action: "registerFace",
-        nama: nama,
-        pin: pin,
-        faceDescriptor: JSON.stringify(Array.from(detection.descriptor))
-      });
-
+      const btnReg = document.getElementById("btnRegisterFace");
+      
+      if (!nama) return alert("Pilih nama karyawan dulu!");
+      if (!pin || pin.length < 4) return alert("Buat PIN minimal 4 angka!");
+      
+      btnReg.disabled = true;
+      statusDiv.className = "badge-status info";
+      statusDiv.innerHTML = "📸 Mengekstrak pola wajah...";
+      
       try {
-        const res = await fetch(API_URL, { method: "POST", body: payload });
+        // 1. Set opsi deteksi dengan threshold input yang lebih efisien (inputSize 320/416)
+        const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5, maxResults: 1 });
+    
+        // 2. Tambahkan Timeout 10 Detik agar tidak menggantung selamanya
+        const detectionPromise = faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Waktu proses habis (Timeout). Coba lagi.")), 10000)
+        );
+    
+        const detection = await Promise.race([detectionPromise, timeoutPromise]);
+    
+        if (!detection) {
+          btnReg.disabled = false;
+          statusDiv.className = "badge-status danger";
+          statusDiv.innerHTML = "❌ Wajah tidak terdeteksi. Posisikan wajah tegak lurus dan pastikan cahaya cukup.";
+          return;
+        }
+
+        // 3. Konversi vektor wajah (128 float) ke String JSON
+        const descriptorArray = Array.from(detection.descriptor);
+        const descriptorJSON = JSON.stringify(descriptorArray);
+    
+        statusDiv.innerHTML = "⏳ Menyimpan data ke database...";
+    
+        // 4. Kirim ke Apps Script
+        const payload = new URLSearchParams();
+        payload.append("action", "registerFace");
+        payload.append("nama", nama);
+        payload.append("pin", pin);
+        payload.append("faceDescriptor", descriptorJSON);
+    
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: payload.toString()
+        });
+        
         const result = await res.json();
-        statusDiv.className = result.status === "success" ? "badge-status success" : "badge-status danger";
-        statusDiv.innerHTML = result.message;
-        if(result.status === "success") await loadDataKaryawan();
-      } catch (e) {
-        statusDiv.className = "badge-status danger"; statusDiv.innerHTML = "❌ Server error.";
+
+        if (result.status === "success") {
+          statusDiv.className = "badge-status success";
+          statusDiv.innerHTML = "✅ " + result.message;
+          await loadDataKaryawan(); // Refresh dataset
+        } else {
+          statusDiv.className = "badge-status danger";
+          statusDiv.innerHTML = "❌ " + result.message;
+        }
+    
+      } catch (err) {
+        console.error(err);
+        statusDiv.className = "badge-status danger";
+        statusDiv.innerHTML = "❌ " + (err.message || "Gagal memproses sampel wajah.");
+      } finally {
+        btnReg.disabled = false;
       }
     }
 
