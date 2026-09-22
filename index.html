@@ -29,7 +29,6 @@
     header h1 { font-size: 1.25rem; font-weight: 700; color: var(--text-main); }
     header p { font-size: 0.85rem; color: var(--text-sub); }
 
-    /* Navigation Tabs */
     .nav-tabs { display: flex; background: #e2e8f0; padding: 4px; border-radius: 10px; margin-bottom: 16px; gap: 4px; }
     .tab-btn { flex: 1; padding: 10px 4px; font-size: 0.82rem; font-weight: 600; border: none; background: transparent; color: var(--text-sub); cursor: pointer; border-radius: 8px; transition: all 0.2s ease; text-align: center; }
     .tab-btn.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -42,7 +41,6 @@
     select, input, button { width: 100%; padding: 11px 12px; font-size: 0.9rem; border-radius: 8px; border: 1px solid var(--border-color); outline: none; }
     select:focus, input:focus { border-color: var(--primary); }
 
-    /* Layout Kamera */
     .camera-box { position: relative; width: 100%; text-align: center; line-height: 0; background: #000; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
     video { width: 100%; max-height: 260px; object-fit: cover; }
     .mirror { transform: scaleX(-1); -webkit-transform: scaleX(-1); }
@@ -54,7 +52,6 @@
       display: flex; align-items: center; justify-content: center;
     }
 
-    /* Buttons */
     .btn-primary { background: var(--primary); color: white; font-weight: 600; border: none; cursor: pointer; }
     .btn-success { background: var(--success); color: white; font-weight: 600; border: none; cursor: pointer; }
     .btn-danger { background: var(--danger); color: white; font-weight: 600; border: none; cursor: pointer; }
@@ -62,13 +59,11 @@
     .btn-group-2 { display: flex; gap: 8px; margin-top: 10px; }
     button:disabled { opacity: 0.65; cursor: not-allowed; }
 
-    /* Status Badge */
     .badge-status { text-align: center; padding: 10px; border-radius: 8px; font-weight: 600; margin-top: 12px; font-size: 0.85rem; }
     .info { background: #e0f2fe; color: #0369a1; }
     .success { background: #dcfce7; color: #15803d; }
     .danger { background: #fee2e2; color: #b91c1c; }
 
-    /* Dashboard UI Elements */
     .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
     .stat-card { background: #f8fafc; border: 1px solid var(--border-color); padding: 10px; border-radius: 8px; text-align: center; }
     .stat-card .num { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
@@ -89,7 +84,6 @@
     .tag-pulang { background: #fef3c7; color: #b45309; }
     .tag-empty { background: #f1f5f9; color: #94a3b8; }
 
-    /* Modal Detail Foto */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px; }
     .modal-card { background: white; border-radius: 12px; padding: 16px; width: 100%; max-width: 400px; max-height: 90vh; overflow-y: auto; }
     .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -105,14 +99,13 @@
     <p>Sistem Presensi Wajah & Portal Karyawan</p>
   </header>
 
-  <!-- Navigation Tabs -->
   <div class="nav-tabs">
     <button class="tab-btn active" onclick="switchTab('tabAbsen', this)">📷 Absen</button>
     <button class="tab-btn" onclick="switchTab('tabDashboard', this)">📊 Riwayat</button>
     <button class="tab-btn" onclick="switchTab('tabRegister', this)">👤 Daftar Wajah</button>
   </div>
 
-  <!-- TAB 1: ABSEN / LOGIN WAJAH -->
+  <!-- TAB 1: ABSEN -->
   <div id="tabAbsen" class="tab-content active">
     <div class="form-group">
       <div class="camera-box">
@@ -142,12 +135,14 @@
     <div id="statusAbsen" class="badge-status info">Memuat AI Model & Data...</div>
   </div>
 
-  <!-- TAB 2: DASHBOARD & RIWAYAT PERSONAL -->
+  <!-- TAB 2: DASHBOARD -->
   <div id="tabDashboard" class="tab-content">
     <div id="loginSectionDashboard">
       <div class="form-group">
         <label for="userDashboardSelect">Pilih Nama Anda:</label>
-        <select id="userDashboardSelect"></select>
+        <select id="userDashboardSelect">
+          <option value="">-- Memuat data karyawan... --</option>
+        </select>
       </div>
       <div class="form-group">
         <label for="userDashboardPin">PIN Keamanan:</label>
@@ -163,7 +158,6 @@
         <button type="button" onclick="logoutDashboard()" class="btn-secondary" style="width: auto; padding: 4px 10px; font-size: 0.75rem;">Keluar</button>
       </div>
 
-      <!-- Ringkasan Statistik -->
       <div class="stats-grid">
         <div class="stat-card">
           <div class="num" id="statHadir">0</div>
@@ -179,7 +173,6 @@
         </div>
       </div>
 
-      <!-- Filter Tanggal -->
       <div class="filter-box">
         <label>Filter Tanggal:</label>
         <div class="filter-row">
@@ -193,7 +186,6 @@
         <button type="button" class="btn-primary" onclick="fetchRiwayatAbsen()" style="margin-top: 8px; padding: 8px;">Terapkan Filter</button>
       </div>
 
-      <!-- Tabel Riwayat -->
       <div class="table-container">
         <table>
           <thead>
@@ -216,7 +208,9 @@
   <div id="tabRegister" class="tab-content">
     <div class="form-group">
       <label for="namaReg">Pilih Nama Karyawan:</label>
-      <select id="namaReg"><option value="">-- Pilih Nama --</option></select>
+      <select id="namaReg">
+        <option value="">-- Pilih Nama --</option>
+      </select>
     </div>
     <div class="form-group">
       <label for="pinReg">Buat PIN Cadangan (4-6 Angka):</label>
@@ -250,36 +244,28 @@
     let isModelsLoaded = false;
     let currentUserSession = null;
 
-    // --- SWITCH TAB HELPER ---
     function switchTab(tabId, element) {
       document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
       document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
 
       const targetTab = document.getElementById(tabId);
       if (targetTab) targetTab.classList.add("active");
-
-      if (element) {
-        element.classList.add("active");
-      }
+      if (element) element.classList.add("active");
     }
 
-    // --- 1. INISIALISASI HALAMAN & FACE-API ---
     document.addEventListener("DOMContentLoaded", async () => {
-      // 1. Jalankan fungsi synchronous
       initKamera("videoAbsen");
       initKamera("videoReg");
       checkExistingSession();
-    
-      // 2. Tunggu faceapi siap dimuat
+      loadNamaKaryawan();
+      
       await waitForFaceApi();
-    
-      // 3. Jalankan load model AI dan load data karyawan secara PARALEL
       await Promise.all([
         loadFaceModels(),
         loadDataKaryawan()
       ]);
     });
-    
+
     function waitForFaceApi() {
       return new Promise((resolve) => {
         if (typeof faceapi !== "undefined") {
@@ -294,7 +280,7 @@
         }
       });
     }
-    
+
     async function loadFaceModels() {
       const statusDiv = document.getElementById("statusAbsen");
       try {
@@ -316,70 +302,52 @@
     }
 
     async function loadNamaKaryawan() {
-      const select = document.getElementById("selectKaryawan"); // Sesuaikan ID element dropdown Anda
-    
-      // 1. Tampilkan dulu dari HP/Storage lokal jika pernah dibuka sebelumnya (0 Detik)
       const localData = localStorage.getItem("LIST_NAMA_KARYAWAN");
       if (localData) {
         renderDropdown(JSON.parse(localData));
-      } else {
-        select.innerHTML = '<option value="">Memuat nama...</option>';
       }
-    
-      // 2. Minta data super cepat dari server
+
       try {
-        const res = await fetch(`${SCRIPT_URL}?action=getNamaKaryawan`);
+        const res = await fetch(`${API_URL}?action=getNamaKaryawan`);
         const json = await res.json();
-    
+
         if (json.status === "success" && json.data.length > 0) {
-          // Simpan ke storage HP
           localStorage.setItem("LIST_NAMA_KARYAWAN", JSON.stringify(json.data));
-          // Update tampilan dropdown
           renderDropdown(json.data);
         }
       } catch (err) {
         console.error("Gagal memuat nama karyawan:", err);
       }
     }
-    
+
     function renderDropdown(list) {
-      const select = document.getElementById("selectKaryawan");
-      if (!select) return;
-      
-      select.innerHTML = '<option value="">-- Pilih Karyawan --</option>';
-      list.forEach(item => {
-        const opt = document.createElement("option");
-        opt.value = item.nama;
-        opt.textContent = `${item.nik ? item.nik + " - " : ""}${item.nama}`;
-        select.appendChild(opt);
+      const targets = ["namaAbsen", "userDashboardSelect", "namaReg"];
+      targets.forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">-- Pilih Karyawan --</option>';
+        list.forEach(item => {
+          const opt = document.createElement("option");
+          opt.value = item.nama;
+          opt.textContent = `${item.nik ? item.nik + " - " : ""}${item.nama}`;
+          select.appendChild(opt);
+        });
       });
     }
 
-    // Kirim ping latar belakang begitu halaman terbuka
-    fetch(`${SCRIPT_URL}?action=getNamaKaryawan`);
-    
-    // Panggil saat halaman pertama kali dibuka
-    document.addEventListener("DOMContentLoaded", loadNamaKaryawan);
-    
-    function populateEmployeeDropdown() {
-      const select = document.getElementById("selectKaryawan");
-      if (!select) return;
-    
-      if (employeeDataList.length === 0) {
-        select.innerHTML = '<option value="">Memuat daftar nama...</option>';
-        return;
+    async function loadDataKaryawan() {
+      try {
+        const res = await fetch(`${API_URL}?action=getDatasetWajah`);
+        const json = await res.json();
+        if (json.status === "success") {
+          datasetKaryawan = json.data;
+        }
+      } catch (err) {
+        console.error("Gagal memuat dataset wajah:", err);
       }
-      
-      select.innerHTML = '<option value="">-- Pilih Karyawan --</option>';
-      employeeDataList.forEach((emp) => {
-        const option = document.createElement("option");
-        option.value = emp.nik || emp.id;
-        option.textContent = `${emp.nik || emp.id} - ${emp.nama}`;
-        select.appendChild(option);
-      });
     }
 
-    // --- KAMERA HELPER ---
     function initKamera(videoId) {
       if (navigator.mediaDevices?.getUserMedia) {
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
@@ -387,9 +355,9 @@
           .catch(err => console.error("Akses Kamera Ditolak / Tidak Tersedia:", err));
       }
     }
+
     function toggleMirror(id) { document.getElementById(id).classList.toggle("mirror"); }
 
-    // --- SCAN WAJAH LOGIC ---
     async function scanWajahLogin() {
       if (!isModelsLoaded) return alert("AI Model belum siap.");
       const video = document.getElementById("videoAbsen");
@@ -436,7 +404,6 @@
       }
     }
 
-    // --- DASHBOARD SESSION & AUTH ---
     function checkExistingSession() {
       const savedUser = sessionStorage.getItem("dash_user");
       if (savedUser) {
@@ -489,7 +456,6 @@
       document.getElementById("loginSectionDashboard").style.display = "block";
     }
 
-    // --- FETCH RIWAYAT PRESENSI ---
     async function fetchRiwayatAbsen() {
       if (!currentUserSession) return;
       const start = document.getElementById("startDateFilter").value;
@@ -537,7 +503,6 @@
       }
     }
 
-    // --- MODAL DETAIL PRESENSI ---
     function openDetailModal(item) {
       document.getElementById("modalTanggal").innerText = "Detail Presensi: " + item.tanggal;
       const content = document.getElementById("modalContent");
@@ -576,7 +541,6 @@
       document.getElementById("detailModal").style.display = "none";
     }
 
-    // --- PROSES REGISTRASI WAJAH ---
     async function prosesRegistrasiWajah() {
       const nama = document.getElementById("namaReg").value;
       const pin = document.getElementById("pinReg").value;
@@ -644,7 +608,6 @@
       }
     }
 
-    // --- PROSES ABSEN ---
     async function prosesAbsen(statusType) {
       const nama = document.getElementById("namaAbsen").value;
       const pin = document.getElementById("pinLogin").value;
