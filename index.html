@@ -514,55 +514,76 @@
 
     // FUNGSI DAFTAR WAJAH MENGGUNAKAN AKUN SESEORANG YANG SUDAH LOGIN
     async function prosesRegistrasiWajah() {
-      if (!isModelsLoaded) return alert("Model AI belum siap!");
-      
-      const pinInput = document.getElementById("regPin").value.trim();
-      if (!pinInput) return alert("Masukkan PIN Anda terlebih dahulu!");
+      if (!currentUserSession || !currentUserPin) {
+        alert("Sesi login berakhir. Silakan login kembali!");
+        logoutDashboard();
+        return;
+      }
     
       const video = document.getElementById("videoReg");
-      const btn = document.getElementById("btnRegWajah");
+      const statusDiv = document.getElementById("statusReg");
+      const btnReg = document.getElementById("btnRegisterFace"); // ID Disesuaikan dengan HTML
     
-      btn.disabled = true;
-      btn.innerHTML = "⏳ Memproses Registrasi...";
+      if (!video.srcObject || video.paused || video.ended) {
+        return alert("Kamera belum aktif!");
+      }
+    
+      btnReg.disabled = true;
+      statusDiv.className = "badge-status info";
+      statusDiv.innerHTML = "📸 Mengekstrak pola wajah...";
     
       try {
-        const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+        const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5, maxResults: 1 });
+        const detectionPromise = faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor();
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Waktu proses habis (Timeout). Coba lagi.")), 10000)
+        );
+    
+        const detection = await Promise.race([detectionPromise, timeoutPromise]);
+    
         if (!detection) {
-          alert("Wajah tidak terdeteksi! Pastikan wajah terlihat jelas dan tegak lurus ke kamera.");
-          btn.disabled = false;
-          btn.innerHTML = "📸 Ambil Foto & Daftarkan Wajah";
+          statusDiv.className = "badge-status danger";
+          statusDiv.innerHTML = "❌ Wajah tidak terdeteksi. Posisikan wajah tegak lurus dan terang.";
+          btnReg.disabled = false;
           return;
         }
     
-        const arrayDescriptor = Array.from(detection.descriptor);
+        const descriptorArray = Array.from(detection.descriptor);
+        const descriptorJSON = JSON.stringify(descriptorArray);
+    
+        statusDiv.innerHTML = "⏳ Menyimpan sampel wajah ke database...";
+    
+        const payload = new URLSearchParams();
+        payload.append("action", "registerFace");
+        payload.append("nama", currentUserSession);
+        payload.append("pin", currentUserPin);
+        payload.append("faceDescriptor", descriptorJSON);
     
         const res = await fetch(API_URL, {
           method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({
-            action: "simpanWajahPortal",
-            pin: pinInput,
-            faceDescriptor: JSON.stringify(arrayDescriptor)
-          })
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: payload.toString()
         });
     
         const result = await res.json();
-        if (result.status === "success") {
-          alert(`✅ Berhasil! Data wajah untuk ${result.nama} telah tersimpan.`);
-          
-          // PERBAIKAN: Perbarui cache dataset wajah secara instant tanpa reload halaman
-          await loadDataKaryawan();
     
-          document.getElementById("regPin").value = "";
+        if (result.status === "success") {
+          statusDiv.className = "badge-status success";
+          statusDiv.innerHTML = "✅ Sampel wajah berhasil diperbarui!";
+          
+          // PERBAIKAN: Refresh dataset lokal di memori secara otomatis
+          await loadDataKaryawan(); 
         } else {
-          alert("❌ Gagal: " + result.message);
+          statusDiv.className = "badge-status danger";
+          statusDiv.innerHTML = "❌ " + result.message;
         }
+    
       } catch (err) {
         console.error(err);
-        alert("❌ Terjadi kesalahan koneksi ke server.");
+        statusDiv.className = "badge-status danger";
+        statusDiv.innerHTML = "❌ " + (err.message || "Gagal memproses sampel wajah.");
       } finally {
-        btn.disabled = false;
-        btn.innerHTML = "📸 Ambil Foto & Daftarkan Wajah";
+        btnReg.disabled = false;
       }
     }
 
