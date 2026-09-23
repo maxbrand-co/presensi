@@ -346,13 +346,17 @@
         const res = await fetch(`${API_URL}?action=getDatasetWajah`);
         const json = await res.json();
         if (json.status === "success") {
-          datasetKaryawan = json.data;
+          // Map properti descriptor/faceDescriptor agar seragam
+          datasetKaryawan = json.data.map(item => ({
+            nama: item.nama,
+            faceDescriptor: item.faceDescriptor || item.descriptor || null
+          }));
         }
       } catch (err) {
         console.error("Gagal memuat dataset wajah:", err);
       }
     }
-
+    
     function initKamera(videoId) {
       if (navigator.mediaDevices?.getUserMedia) {
         navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
@@ -367,18 +371,18 @@
       if (!isModelsLoaded) return alert("AI Model belum siap.");
       const video = document.getElementById("videoAbsen");
       const statusDiv = document.getElementById("statusAbsen");
-
+    
       if (!video.srcObject || video.paused || video.ended) {
         return alert("Kamera belum aktif!");
       }
-
+    
       statusDiv.className = "badge-status info"; 
       statusDiv.innerHTML = "🔍 Memindai...";
-
+    
       if (!datasetKaryawan || datasetKaryawan.length === 0) {
         await loadDataKaryawan();
       }
-
+    
       try {
         const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
         if (!detection) {
@@ -387,47 +391,48 @@
           document.getElementById("groupPinFallback").style.display = "block";
           return;
         }
-
+    
         let bestMatch = { nama: null, distance: 1.0 };
         let totalDicek = 0;
-
+    
         datasetKaryawan.forEach((user) => {
-          if (user.faceDescriptor) {
-            try {
-              let desc = user.faceDescriptor;
-              if (typeof desc === 'string' && desc.trim() !== '') desc = JSON.parse(desc);
-              if (!Array.isArray(desc) && typeof desc === 'object' && desc !== null) desc = Object.values(desc);
-
-              if (Array.isArray(desc) && desc.length === 128) {
-                totalDicek++;
-                const floatArray = new Float32Array(desc);
-                const dist = faceapi.euclideanDistance(detection.descriptor, floatArray);
-
-                if (dist < bestMatch.distance) {
-                  bestMatch = { nama: user.nama, distance: dist };
-                }
+          let desc = user.faceDescriptor;
+          if (!desc) return;
+    
+          try {
+            if (typeof desc === 'string' && desc.trim() !== '') desc = JSON.parse(desc);
+            if (!Array.isArray(desc) && typeof desc === 'object' && desc !== null) desc = Object.values(desc);
+    
+            if (Array.isArray(desc) && desc.length === 128) {
+              totalDicek++;
+              const floatArray = new Float32Array(desc);
+              const dist = faceapi.euclideanDistance(detection.descriptor, floatArray);
+    
+              if (dist < bestMatch.distance) {
+                bestMatch = { nama: user.nama, distance: dist };
               }
-            } catch (e) {
-              console.error("Error parsing descriptor:", e);
             }
+          } catch (e) {
+            console.error("Error parsing descriptor user:", user.nama, e);
           }
         });
-
+    
         if (totalDicek === 0) {
           statusDiv.className = "badge-status danger";
-          statusDiv.innerHTML = "❌ Belum ada data wajah terdaftar. Silakan login ke Portal untuk mendaftarkan wajah.";
+          statusDiv.innerHTML = "❌ Belum ada data wajah terdaftar di sistem. Silakan login ke Portal.";
           document.getElementById("groupPinFallback").style.display = "block";
           return;
         }
-
+    
+        // Threshold 0.55 - 0.58 ideal untuk presensi akurat
         if (bestMatch.nama && bestMatch.distance < 0.58) {
           document.getElementById("namaAbsen").value = bestMatch.nama;
           statusDiv.className = "badge-status success"; 
-          statusDiv.innerHTML = `✅ Dikenali: <b>${bestMatch.nama}</b> (Skor: ${bestMatch.distance.toFixed(2)})`;
+          statusDiv.innerHTML = `✅ Dikenali: <b>${bestMatch.nama}</b> (Akurasi: ${((1 - bestMatch.distance) * 100).toFixed(0)}%)`;
           document.getElementById("groupPinFallback").style.display = "none";
         } else {
           statusDiv.className = "badge-status danger"; 
-          statusDiv.innerHTML = `❌ Wajah tak cocok (Jarak terdekat: ${bestMatch.distance.toFixed(2)}). Gunakan PIN.`;
+          statusDiv.innerHTML = `❌ Wajah tidak cocok. Gunakan PIN untuk login.`;
           document.getElementById("groupPinFallback").style.display = "block";
         }
       } catch (err) {
@@ -509,73 +514,55 @@
 
     // FUNGSI DAFTAR WAJAH MENGGUNAKAN AKUN SESEORANG YANG SUDAH LOGIN
     async function prosesRegistrasiWajah() {
-      if (!currentUserSession || !currentUserPin) {
-        alert("Sesi login berakhir. Silakan login kembali!");
-        logoutDashboard();
-        return;
-      }
-
+      if (!isModelsLoaded) return alert("Model AI belum siap!");
+      
+      const pinInput = document.getElementById("regPin").value.trim();
+      if (!pinInput) return alert("Masukkan PIN Anda terlebih dahulu!");
+    
       const video = document.getElementById("videoReg");
-      const statusDiv = document.getElementById("statusReg");
-      const btnReg = document.getElementById("btnRegisterFace");
-
-      if (!video.srcObject || video.paused || video.ended) {
-        return alert("Kamera belum aktif!");
-      }
-
-      btnReg.disabled = true;
-      statusDiv.className = "badge-status info";
-      statusDiv.innerHTML = "📸 Mengekstrak pola wajah...";
-
+      const btn = document.getElementById("btnRegWajah");
+    
+      btn.disabled = true;
+      btn.innerHTML = "⏳ Memproses Registrasi...";
+    
       try {
-        const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5, maxResults: 1 });
-        const detectionPromise = faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Waktu proses habis (Timeout). Coba lagi.")), 10000)
-        );
-
-        const detection = await Promise.race([detectionPromise, timeoutPromise]);
-
+        const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
         if (!detection) {
-          statusDiv.className = "badge-status danger";
-          statusDiv.innerHTML = "❌ Wajah tidak terdeteksi. Posisikan wajah tegak lurus dan terang.";
+          alert("Wajah tidak terdeteksi! Pastikan wajah terlihat jelas dan tegak lurus ke kamera.");
+          btn.disabled = false;
+          btn.innerHTML = "📸 Ambil Foto & Daftarkan Wajah";
           return;
         }
-
-        const descriptorArray = Array.from(detection.descriptor);
-        const descriptorJSON = JSON.stringify(descriptorArray);
-
-        statusDiv.innerHTML = "⏳ Menyimpan sampel wajah ke database...";
-
-        const payload = new URLSearchParams();
-        payload.append("action", "registerFace");
-        payload.append("nama", currentUserSession); // Menggunakan variabel user yang sedang login
-        payload.append("pin", currentUserPin);       // Menggunakan PIN sesi user
-        payload.append("faceDescriptor", descriptorJSON);
-
+    
+        const arrayDescriptor = Array.from(detection.descriptor);
+    
         const res = await fetch(API_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: payload.toString()
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({
+            action: "simpanWajahPortal",
+            pin: pinInput,
+            faceDescriptor: JSON.stringify(arrayDescriptor)
+          })
         });
-
+    
         const result = await res.json();
-
         if (result.status === "success") {
-          statusDiv.className = "badge-status success";
-          statusDiv.innerHTML = "✅ Sampel wajah berhasil diperbarui!";
-          await loadDataKaryawan(); // Refresh dataset lokal di browser
+          alert(`✅ Berhasil! Data wajah untuk ${result.nama} telah tersimpan.`);
+          
+          // PERBAIKAN: Perbarui cache dataset wajah secara instant tanpa reload halaman
+          await loadDataKaryawan();
+    
+          document.getElementById("regPin").value = "";
         } else {
-          statusDiv.className = "badge-status danger";
-          statusDiv.innerHTML = "❌ " + result.message;
+          alert("❌ Gagal: " + result.message);
         }
-
       } catch (err) {
         console.error(err);
-        statusDiv.className = "badge-status danger";
-        statusDiv.innerHTML = "❌ " + (err.message || "Gagal memproses sampel wajah.");
+        alert("❌ Terjadi kesalahan koneksi ke server.");
       } finally {
-        btnReg.disabled = false;
+        btn.disabled = false;
+        btn.innerHTML = "📸 Ambil Foto & Daftarkan Wajah";
       }
     }
 
