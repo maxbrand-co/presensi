@@ -514,29 +514,43 @@
 
     // FUNGSI DAFTAR WAJAH MENGGUNAKAN AKUN SESEORANG YANG SUDAH LOGIN
     async function prosesRegistrasiWajah() {
+      const statusDiv = document.getElementById("statusReg");
+      const btnReg = document.getElementById("btnRegisterFace");
+    
+      // 1. Cek Sesi Login User
       if (!currentUserSession || !currentUserPin) {
         alert("Sesi login berakhir. Silakan login kembali!");
         logoutDashboard();
         return;
       }
     
-      const video = document.getElementById("videoReg");
-      const statusDiv = document.getElementById("statusReg");
-      const btnReg = document.getElementById("btnRegisterFace"); // ID Disesuaikan dengan HTML
-    
-      if (!video.srcObject || video.paused || video.ended) {
-        return alert("Kamera belum aktif!");
+      // 2. Cek Ketersediaan Model AI (face-api)
+      if (!isModelsLoaded || typeof faceapi === "undefined") {
+        alert("AI Model Pengenal Wajah belum siap atau masih memuat. Harap tunggu beberapa detik lalu coba lagi.");
+        return;
       }
     
+      // 3. Cek Status Kamera
+      const video = document.getElementById("videoReg");
+      if (!video || !video.srcObject || video.paused || video.ended) {
+        return alert("Kamera belum aktif! Klik 'Kelola Wajah' kembali untuk menyalakan kamera.");
+      }
+    
+      // Nonaktifkan tombol saat proses berjalan
       btnReg.disabled = true;
       statusDiv.className = "badge-status info";
       statusDiv.innerHTML = "📸 Mengekstrak pola wajah...";
     
       try {
-        const options = new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5, maxResults: 1 });
-        const detectionPromise = faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor();
+        // Gunakan fungsi deteksi standar tanpa opsi SsdMobilenetv1Options tambahan agar lebih stabil
+        const detectionPromise = faceapi
+          .detectSingleFace(video)
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+    
+        // Timeout 12 detik
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Waktu proses habis (Timeout). Coba lagi.")), 10000)
+          setTimeout(() => reject(new Error("Waktu proses habis (Timeout). Pastikan pencahayaan cukup.")), 12000)
         );
     
         const detection = await Promise.race([detectionPromise, timeoutPromise]);
@@ -571,15 +585,15 @@
           statusDiv.className = "badge-status success";
           statusDiv.innerHTML = "✅ Sampel wajah berhasil diperbarui!";
           
-          // PERBAIKAN: Refresh dataset lokal di memori secara otomatis
+          // Refresh dataset lokal di browser agar pendaftaran langsung aktif
           await loadDataKaryawan(); 
         } else {
           statusDiv.className = "badge-status danger";
-          statusDiv.innerHTML = "❌ " + result.message;
+          statusDiv.innerHTML = "❌ " + (result.message || "Gagal menyimpan ke database.");
         }
     
       } catch (err) {
-        console.error(err);
+        console.error("Error registrasi wajah:", err);
         statusDiv.className = "badge-status danger";
         statusDiv.innerHTML = "❌ " + (err.message || "Gagal memproses sampel wajah.");
       } finally {
