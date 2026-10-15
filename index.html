@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <link rel="apple-touch-icon" sizes="180x180" href="/favicon/maxb_attd_apple-touch-icon.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon/maxb_attd_favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon/maxb_attd_favicon-16x16.png">
-  <link rel="manifest" href="/favicon/site.webmanifest">
-  <link rel="shortcut icon" href="/favicon/maxb_attd_favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="favicon/maxb_attd_apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon/maxb_attd_favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon/maxb_attd_favicon-16x16.png">
+  <link rel="manifest" href="favicon/site.webmanifest">
+  <link rel="shortcut icon" href="favicon/maxb_attd_favicon.ico">
   <meta name="theme-color" content="#ffffff">
   <meta name="msapplication-TileColor" content="#ffffff">
-  <meta name="msapplication-TileImage" content="/favicon/maxb_attd_apple-touch-icon.png">
+  <meta name="msapplication-TileImage" content="favicon/maxb_attd_apple-touch-icon.png">
   
   <title>Aplikasi Presensi & Dashboard Karyawan - CV. Maxbrand</title>
   
@@ -40,7 +40,7 @@
     header p { font-size: 0.85rem; color: var(--text-sub); }
 
     .nav-tabs { display: flex; background: #e2e8f0; padding: 4px; border-radius: 10px; margin-bottom: 16px; gap: 4px; }
-    .tab-btn { flex: 1; padding: 10px 4px; font-size: 0.82rem; font-weight: 600; border: none; background: transparent; color: var(--text-sub); cursor: pointer; border-radius: 8px; transition: all 0.2s ease; text-align: center; }
+    .tab-btn { flex: 1; padding: 10px 4px; font-size: 0.82rem; font-weight: 600; border: none; background: transparent; color: var(--text-sub); cursor: pointer; border-radius: 8px; transition: all[...]
     .tab-btn.active { background: var(--card-bg); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 
     .tab-content { display: none; background: var(--card-bg); padding: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
@@ -392,7 +392,7 @@
       if (!datasetKaryawan || datasetKaryawan.length === 0) {
         await loadDataKaryawan();
       }
-    
+
       try {
         const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
         if (!detection) {
@@ -401,23 +401,23 @@
           document.getElementById("groupPinFallback").style.display = "block";
           return;
         }
-    
+
         let bestMatch = { nama: null, distance: 1.0 };
         let totalDicek = 0;
-    
+
         datasetKaryawan.forEach((user) => {
           let desc = user.faceDescriptor;
           if (!desc) return;
-    
+
           try {
             if (typeof desc === 'string' && desc.trim() !== '') desc = JSON.parse(desc);
             if (!Array.isArray(desc) && typeof desc === 'object' && desc !== null) desc = Object.values(desc);
-    
+
             if (Array.isArray(desc) && desc.length === 128) {
               totalDicek++;
               const floatArray = new Float32Array(desc);
               const dist = faceapi.euclideanDistance(detection.descriptor, floatArray);
-    
+
               if (dist < bestMatch.distance) {
                 bestMatch = { nama: user.nama, distance: dist };
               }
@@ -426,14 +426,14 @@
             console.error("Error parsing descriptor user:", user.nama, e);
           }
         });
-    
+
         if (totalDicek === 0) {
           statusDiv.className = "badge-status danger";
           statusDiv.innerHTML = "❌ Belum ada data wajah terdaftar di sistem. Silakan login ke Portal.";
           document.getElementById("groupPinFallback").style.display = "block";
           return;
         }
-    
+
         // Threshold 0.55 - 0.58 ideal untuk presensi akurat
         if (bestMatch.nama && bestMatch.distance < 0.58) {
           document.getElementById("namaAbsen").value = bestMatch.nama;
@@ -527,88 +527,88 @@
       const statusDiv = document.getElementById("statusReg");
       const btnReg = document.getElementById("btnRegisterFace");
     
-      // 1. Cek Sesi Login User
-      if (!currentUserSession || !currentUserPin) {
-        alert("Sesi login berakhir. Silakan login kembali!");
-        logoutDashboard();
-        return;
-      }
+    // 1. Cek Sesi Login User
+    if (!currentUserSession || !currentUserPin) {
+      alert("Sesi login berakhir. Silakan login kembali!");
+      logoutDashboard();
+      return;
+    }
     
-      // 2. Cek Ketersediaan Model AI (face-api)
-      if (!isModelsLoaded || typeof faceapi === "undefined") {
-        alert("AI Model Pengenal Wajah belum siap atau masih memuat. Harap tunggu beberapa detik lalu coba lagi.");
-        return;
-      }
+    // 2. Cek Ketersediaan Model AI (face-api)
+    if (!isModelsLoaded || typeof faceapi === "undefined") {
+      alert("AI Model Pengenal Wajah belum siap atau masih memuat. Harap tunggu beberapa detik lalu coba lagi.");
+      return;
+    }
     
-      // 3. Cek Status Kamera
-      const video = document.getElementById("videoReg");
-      if (!video || !video.srcObject || video.paused || video.ended) {
-        return alert("Kamera belum aktif! Klik 'Kelola Wajah' kembali untuk menyalakan kamera.");
-      }
+    // 3. Cek Status Kamera
+    const video = document.getElementById("videoReg");
+    if (!video || !video.srcObject || video.paused || video.ended) {
+      return alert("Kamera belum aktif! Klik 'Kelola Wajah' kembali untuk menyalakan kamera.");
+    }
     
-      // Nonaktifkan tombol saat proses berjalan
-      btnReg.disabled = true;
-      statusDiv.className = "badge-status info";
-      statusDiv.innerHTML = "📸 Mengekstrak pola wajah...";
+    // Nonaktifkan tombol saat proses berjalan
+    btnReg.disabled = true;
+    statusDiv.className = "badge-status info";
+    statusDiv.innerHTML = "📸 Mengekstrak pola wajah...";
     
-      try {
-        // Gunakan fungsi deteksi standar tanpa opsi SsdMobilenetv1Options tambahan agar lebih stabil
-        const detectionPromise = faceapi
-          .detectSingleFace(video)
-          .withFaceLandmarks()
-          .withFaceDescriptor();
+    try {
+      // Gunakan fungsi deteksi standar tanpa opsi SsdMobilenetv1Options tambahan agar lebih stabil
+      const detectionPromise = faceapi
+        .detectSingleFace(video)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
     
-        // Timeout 12 detik
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Waktu proses habis (Timeout). Pastikan pencahayaan cukup.")), 12000)
-        );
+      // Timeout 12 detik
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error("Waktu proses habis (Timeout). Pastikan pencahayaan cukup.")), 12000)
+      );
     
-        const detection = await Promise.race([detectionPromise, timeoutPromise]);
+      const detection = await Promise.race([detectionPromise, timeoutPromise]);
     
-        if (!detection) {
-          statusDiv.className = "badge-status danger";
-          statusDiv.innerHTML = "❌ Wajah tidak terdeteksi. Posisikan wajah tegak lurus dan terang.";
-          btnReg.disabled = false;
-          return;
-        }
-    
-        const descriptorArray = Array.from(detection.descriptor);
-        const descriptorJSON = JSON.stringify(descriptorArray);
-    
-        statusDiv.innerHTML = "⏳ Menyimpan sampel wajah ke database...";
-    
-        const payload = new URLSearchParams();
-        payload.append("action", "registerFace");
-        payload.append("nama", currentUserSession);
-        payload.append("pin", currentUserPin);
-        payload.append("faceDescriptor", descriptorJSON);
-    
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/x-www-form-urlencoded" },
-          body: payload.toString()
-        });
-    
-        const result = await res.json();
-    
-        if (result.status === "success") {
-          statusDiv.className = "badge-status success";
-          statusDiv.innerHTML = "✅ Sampel wajah berhasil diperbarui!";
-          
-          // Refresh dataset lokal di browser agar pendaftaran langsung aktif
-          await loadDataKaryawan(); 
-        } else {
-          statusDiv.className = "badge-status danger";
-          statusDiv.innerHTML = "❌ " + (result.message || "Gagal menyimpan ke database.");
-        }
-    
-      } catch (err) {
-        console.error("Error registrasi wajah:", err);
+      if (!detection) {
         statusDiv.className = "badge-status danger";
-        statusDiv.innerHTML = "❌ " + (err.message || "Gagal memproses sampel wajah.");
-      } finally {
+        statusDiv.innerHTML = "❌ Wajah tidak terdeteksi. Posisikan wajah tegak lurus dan terang.";
         btnReg.disabled = false;
+        return;
       }
+    
+      const descriptorArray = Array.from(detection.descriptor);
+      const descriptorJSON = JSON.stringify(descriptorArray);
+    
+      statusDiv.innerHTML = "⏳ Menyimpan sampel wajah ke database...";
+    
+      const payload = new URLSearchParams();
+      payload.append("action", "registerFace");
+      payload.append("nama", currentUserSession);
+      payload.append("pin", currentUserPin);
+      payload.append("faceDescriptor", descriptorJSON);
+    
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: payload.toString()
+      });
+    
+      const result = await res.json();
+    
+      if (result.status === "success") {
+        statusDiv.className = "badge-status success";
+        statusDiv.innerHTML = "✅ Sampel wajah berhasil diperbarui!";
+        
+        // Refresh dataset lokal di browser agar pendaftaran langsung aktif
+        await loadDataKaryawan(); 
+      } else {
+        statusDiv.className = "badge-status danger";
+        statusDiv.innerHTML = "❌ " + (result.message || "Gagal menyimpan ke database.");
+      }
+    
+    } catch (err) {
+      console.error("Error registrasi wajah:", err);
+      statusDiv.className = "badge-status danger";
+      statusDiv.innerHTML = "❌ " + (err.message || "Gagal memproses sampel wajah.");
+    } finally {
+      btnReg.disabled = false;
+    }
     }
 
     async function fetchRiwayatAbsen() {
@@ -680,7 +680,7 @@
         html += `
           <div>
             <b style="color:var(--warning)">📤 Absen Pulang: ${item.pulang.formattedTime}</b><br/>
-            <small>GPS: ${item.pulang.latitude}, ${item.pulang.longitude} (<a href="https://maps.google.com/?q=${item.pulang.latitude},${item.pulang.longitude}" target="_blank">Buka Maps</a>)</small>
+            <small>GPS: ${item.pulang.latitude}, ${item.pulang.longitude} (<a href="https://maps.google.com/?q=${item.pulang.latitude},${item.pulang.longitude}" target="_blank">Buka Maps</a>)</sm[...]
             ${item.pulang.fotoUrl ? `<img src="${item.pulang.fotoUrl}" />` : ''}
           </div>
         `;
